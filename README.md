@@ -1,144 +1,293 @@
-# Reddit NLP: Cryptocurrency vs. Stock Post Classification
+# 🔍 CryptoSentinel
 
-## Table of Contents
-1. [Introduction](#introduction)
-2. [Problem Statement](#problem-statement)
-3. [Data Collection and Description](#data-collection-and-description)
-4. [Methodology](#methodology)
-5. [Results and Discussion](#results-and-discussion)
-6. [Conclusions](#conclusions)
-7. [Limitations and Future Work](#limitations-and-future-work)
-8. [References](#references)
+**Agentic AI System for Grounded Crypto & Stock Market Intelligence**
 
-## Introduction
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-green.svg)](https://modelcontextprotocol.io/)
 
-Reddit, a popular social news and discussion platform, hosts a variety of communities (subreddits) dedicated to different topics. Among these, r/wallstreetbets and r/CryptoMoonShots are two prominent subreddits focused on stock trading and cryptocurrency investments, respectively. This project aims to leverage Natural Language Processing (NLP) techniques to distinguish between posts from these two subreddits, providing insights into the linguistic patterns and content characteristics of cryptocurrency and stock-related discussions.
+CryptoSentinel transforms Reddit discussions from r/wallstreetbets and r/CryptoMoonShots into actionable, **grounded** intelligence. Unlike traditional chatbots that may hallucinate, CryptoSentinel implements a **Self-Socratic Refinement** loop that ensures every insight is backed by evidence with proper citations.
 
-## Problem Statement
+## 🎯 Key Features
 
-The primary objective of this study is to develop a robust binary classification model capable of accurately distinguishing between cryptocurrency-based posts from r/CryptoMoonShots and stock-based posts from r/wallstreetbets. By achieving this, we aim to:
+- **MCP-Compatible Tools** - Expose analysis capabilities to any AI assistant via the Model Context Protocol
+- **Self-Socratic Refinement** - Plan → Execute → Verify → Finalize reasoning loop
+- **Dual-Persona Verification** - DomainAnalyst + EvidenceVerifier work together to prevent hallucination
+- **Evidence Budgeting** - Minimum citation requirements for grounded claims
+- **93% Classification Accuracy** - Ensemble NB+LR model distinguishes crypto from stock discussions
+- **Interactive Demo** - Streamlit UI with full reasoning trace visualization
 
-1. Demonstrate the effectiveness of NLP techniques in categorizing financial discussion topics.
-2. Provide a tool for automatic categorization of financial posts, which could be valuable for content moderation, trend analysis, or personalized content recommendations.
-3. Identify key linguistic features that differentiate cryptocurrency discussions from stock market discussions.
+## 🏗️ Architecture
 
-## Data Collection and Description
+```mermaid
+graph TB
+    subgraph "User Interface"
+        UI[Streamlit Demo]
+        API[FastAPI Endpoints]
+    end
+    
+    subgraph "MCP Server"
+        MCP[MCP Protocol Handler]
+        T1[reddit_search]
+        T2[sentiment_aggregate]
+        T3[topic_clusters]
+        T4[classify_post]
+        T5[generate_brief]
+    end
+    
+    subgraph "Reasoning Engine"
+        SR[Socratic Refiner]
+        DA[Domain Analyst]
+        EV[Evidence Verifier]
+    end
+    
+    subgraph "Context Engine"
+        PR[Post Retriever]
+        EE[Embedding Engine]
+        EB[Evidence Budget]
+    end
+    
+    subgraph "ML Models"
+        NB[Naive Bayes]
+        LR[Logistic Regression]
+        ENS[Ensemble Classifier]
+    end
+    
+    subgraph "Data Layer"
+        CSV[(Reddit Posts CSV)]
+        IDX[(TF-IDF Index)]
+    end
+    
+    UI --> MCP
+    API --> MCP
+    MCP --> T1 & T2 & T3 & T4 & T5
+    T5 --> SR
+    SR --> DA --> EV
+    SR --> PR
+    PR --> EE --> IDX
+    PR --> EB
+    T4 --> ENS
+    ENS --> NB & LR
+    PR --> CSV
+```
 
-Data was collected using the Python Reddit API Wrapper (PRAW), focusing on the following subreddits:
+## 🛠️ MCP Tools
 
-1. r/wallstreetbets: [https://www.reddit.com/r/wallstreetbets](https://www.reddit.com/r/wallstreetbets)
-2. r/CryptoMoonShots: [https://www.reddit.com/r/CryptoMoonShots](https://www.reddit.com/r/CryptoMoonShots)
+CryptoSentinel exposes 5 tools via the Model Context Protocol:
 
-The dataset comprises posts from various categories (top, new, controversial) for each subreddit. Key features include:
+| Tool | Description |
+|------|-------------|
+| `reddit_search` | Search posts with filters (subreddit, time, score) |
+| `sentiment_aggregate` | Aggregate sentiment for a topic across posts |
+| `topic_clusters` | Extract main discussion themes |
+| `classify_post` | Classify content as crypto or stocks |
+| `generate_brief` | Generate grounded narrative with citations |
 
-| Feature         | Type     | Description                                      |
-|-----------------|----------|--------------------------------------------------|
-| id              | object   | Unique Reddit post ID                            |
-| datetime        | object   | Post timestamp                                   |
-| title           | object   | Post title                                       |
-| text            | object   | Post content                                     |
-| score           | int64    | Net upvotes (upvotes - downvotes)                |
-| upvote_ratio    | float64  | Ratio of upvotes to total votes                  |
-| url             | object   | URL of the Reddit post                           |
-| subreddit       | int64    | Binary label (0: CryptoMoonShots, 1: wallstreetbets) |
-| has_text        | bool     | Indicates presence of text content               |
-| title_len       | int64    | Character length of the title                    |
-| text_len        | int64    | Character length of the text content             |
+### Example Tool Usage
 
-## Methodology
+```python
+from src.mcp_server.tools import generate_brief
 
-Our approach to developing a classification model for Reddit posts involved the following steps:
+brief = generate_brief(
+    topic="What are people saying about Bitcoin?",
+    max_sources=5
+)
 
-1. **Data Collection**: Utilized PRAW to scrape posts from r/wallstreetbets and r/CryptoMoonShots.
+print(f"Summary: {brief.summary}")
+print(f"Confidence: {brief.confidence:.1%}")
+print(f"Groundedness: {brief.groundedness}")
+for citation in brief.citations:
+    print(f"  - [{citation.subreddit}]({citation.url})")
+```
 
-2. **Data Preprocessing**:
-   - Cleaned and combined data from different post categories.
-   - Handled missing values and outliers.
-   - Binarized the 'subreddit' column for model prediction.
+## 🧠 Self-Socratic Refinement
 
-3. **Text Processing**:
-   - Tokenization
-   - Lemmatization
-   - Lowercasing
-   - Removal of punctuation and stop words
+The reasoning engine follows a structured loop to ensure grounded responses:
 
-4. **Feature Engineering**:
-   - Created 'has_text', 'title_len', and 'text_len' features.
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    SELF-SOCRATIC LOOP                        │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  1. PLAN                                                     │
+│     └─ Decompose question into sub-questions                 │
+│     └─ Identify required tools                               │
+│     └─ Estimate evidence needs                               │
+│                                                              │
+│  2. EXECUTE                                                  │
+│     └─ Call tools to gather evidence                         │
+│     └─ Collect citations with relevance scores               │
+│     └─ Track evidence budget                                 │
+│                                                              │
+│  3. VERIFY                                                   │
+│     └─ Domain Analyst: Generate insights                     │
+│     └─ Evidence Verifier: Check citations                    │
+│     └─ Identify gaps and contradictions                      │
+│     └─ Apply VETO if standards not met                       │
+│                                                              │
+│  4. FINALIZE                                                 │
+│     └─ Produce grounded answer OR                            │
+│     └─ REFUSE with explanation                               │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
 
-5. **Vectorization**:
-   - Implemented both CountVectorizer (CVEC) and TF-IDF vectorization.
+## 📊 Original Research Foundation
 
-6. **Model Development**:
-   - Trained and compared multiple classification models:
-     - Multinomial Naive Bayes
-     - Logistic Regression
-     - Random Forest
+This project builds on NLP research analyzing ~5,500 Reddit posts:
 
-7. **Hyperparameter Tuning**:
-   - Utilized GridSearchCV for optimizing model parameters.
+| Metric | Value |
+|--------|-------|
+| **Dataset Size** | 5,545 posts |
+| **Sources** | r/wallstreetbets, r/CryptoMoonShots |
+| **Classification Accuracy** | 93.0% |
+| **Ensemble Model** | Naive Bayes + Logistic Regression |
+| **Vectorization** | TF-IDF with unigrams |
+| **Sentiment Analysis** | VADER |
 
-8. **Model Evaluation**:
-   - Assessed model performance using accuracy, precision, recall, and F1-score.
-   - Implemented cross-validation to ensure model generalization.
+## 🚀 Quick Start
 
-9. **Ensemble Methods**:
-   - Explored ensemble techniques combining Naive Bayes and Logistic Regression.
+### Installation
 
-## Results and Discussion
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/cryptosentinel.git
+cd cryptosentinel
 
-Our analysis yielded several key insights:
+# Install dependencies
+pip install -r requirements.txt
 
-1. The Multinomial Naive Bayes model demonstrated superior performance, achieving an accuracy of just under 93% in predicting the subreddit of origin for a given post.
+# Download NLTK data
+python -c "import nltk; nltk.download('punkt'); nltk.download('stopwords'); nltk.download('wordnet')"
+```
 
-2. Cross-validation confirmed the model's robustness and generalizability.
+### Run the Demo
 
-3. An ensemble model combining Naive Bayes and Logistic Regression slightly improved accuracy to just above 93%.
+```bash
+# Streamlit UI
+streamlit run app/streamlit_app.py
 
-4. Key differentiating features between cryptocurrency and stock posts were identified, providing insights into the unique language and topics of each community.
+# Or FastAPI server
+uvicorn app.api:app --reload --port 8000
+```
 
-These findings demonstrate the effectiveness of NLP techniques in distinguishing between cryptocurrency and stock-related discussions on Reddit, highlighting the potential for automated content categorization in financial forums.
+### Use as MCP Server
 
-## Conclusions
+Add to your Claude Desktop config (`claude_desktop_config.json`):
 
-This study successfully developed a high-accuracy classification model for distinguishing between cryptocurrency and stock-related posts on Reddit. The Multinomial Naive Bayes model, along with the ensemble approach, proved particularly effective in capturing the linguistic nuances of these two financial communities.
+```json
+{
+  "mcpServers": {
+    "cryptosentinel": {
+      "command": "python",
+      "args": ["-m", "src.mcp_server.server"],
+      "cwd": "/path/to/cryptosentinel"
+    }
+  }
+}
+```
 
-Our results suggest that there are indeed distinct language patterns and topics that characterize discussions in r/CryptoMoonShots and r/wallstreetbets. This insight could be valuable for content moderators, financial analysts, and researchers studying online financial communities.
+## 📈 Reliability Metrics
 
-## Limitations and Future Work
+CryptoSentinel includes an evaluation suite to measure reliability:
 
-While our model demonstrates strong predictive performance, several areas for improvement and future research have been identified:
+### Groundedness Evaluation
+- Tests that claims have supporting citations
+- Measures citation relevance thresholds
+- Validates groundedness labels
 
-1. **Temporal Analysis**: Investigate how language patterns in these subreddits change over time, particularly in response to market events.
+### Refusal Evaluation
+- Tests proper refusal on insufficient evidence
+- Measures false positive/negative rates
+- Validates refusal explanations
 
-2. **Multi-class Classification**: Extend the model to classify posts into more granular categories (e.g., specific cryptocurrencies or stock sectors).
+```bash
+# Run evaluations
+python -m evals.groundedness
+python -m evals.refusal
+```
 
-3. **Sentiment Analysis**: Incorporate sentiment analysis to understand the emotional tone of posts and its relationship to the subject matter.
+## 🔧 API Reference
 
-4. **Deep Learning Approaches**: Explore the use of neural networks, particularly Convolutional Neural Networks (CNNs) or Transformers, for potentially higher classification accuracy.
+### REST Endpoints
 
-5. **Feature Importance Analysis**: Conduct a more in-depth analysis of the most important features (words or phrases) that distinguish between cryptocurrency and stock posts.
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Health check |
+| `/search` | POST | Search Reddit posts |
+| `/sentiment` | POST | Sentiment aggregation |
+| `/classify` | POST | Post classification |
+| `/brief` | POST | Generate grounded brief |
+| `/reason` | POST | Full Socratic reasoning |
+| `/clusters` | GET | Topic clusters |
+| `/tools` | GET | MCP tool definitions |
 
-6. **Cross-platform Analysis**: Extend the study to include data from other social media platforms to compare discussion patterns across different online communities.
+### Example API Call
 
-7. **Real-time Classification**: Develop a system for real-time classification of new posts, which could be useful for live monitoring of financial discussions.
+```bash
+curl -X POST "http://localhost:8000/brief" \
+  -H "Content-Type: application/json" \
+  -d '{"topic": "Bitcoin sentiment", "max_sources": 5}'
+```
 
-8. **Ethical Considerations**: Address potential biases in the data and model, and consider the ethical implications of automated content classification in financial discussions.
+## 📁 Project Structure
 
-By addressing these limitations and exploring these avenues for future work, we can further improve the accuracy and applicability of our classification model, potentially extending its use to other domains of online financial discourse analysis.
+```
+crypto-stocks-nlp/
+├── src/
+│   ├── context_engine/     # Semantic search & evidence
+│   │   ├── retriever.py    # Post retrieval with citations
+│   │   ├── embeddings.py   # TF-IDF/transformer embeddings
+│   │   └── evidence.py     # Evidence budget & validation
+│   ├── mcp_server/         # MCP protocol implementation
+│   │   ├── server.py       # JSON-RPC server
+│   │   └── tools.py        # Tool definitions
+│   ├── reasoning/          # Agentic reasoning
+│   │   ├── socratic_refine.py  # Plan-Execute-Verify-Finalize
+│   │   └── personas.py     # Analyst + Verifier personas
+│   ├── models/             # ML classifiers
+│   │   └── classifier.py   # Ensemble NB+LR
+│   └── utils/              # Utilities
+│       └── preprocessing.py # NLTK text processing
+├── app/
+│   ├── streamlit_app.py    # Interactive demo UI
+│   └── api.py              # FastAPI endpoints
+├── evals/
+│   ├── groundedness.py     # Citation accuracy tests
+│   └── refusal.py          # Proper refusal tests
+├── data/                   # Reddit post CSVs
+├── code/                   # Original notebooks
+├── requirements.txt
+├── pyproject.toml
+└── AGENTS.md               # Development guidance
+```
 
-## References
+## 🔒 Safety & Limitations
 
-1. Reddit API Documentation. (n.d.). Retrieved from [https://www.reddit.com/dev/api/](https://www.reddit.com/dev/api/)
+### What CryptoSentinel Does
+- ✅ Provides grounded analysis backed by citations
+- ✅ Clearly labels speculation vs. grounded claims
+- ✅ Refuses to answer when evidence is insufficient
+- ✅ Tracks confidence and groundedness scores
 
-2. Python Reddit API Wrapper (PRAW). (n.d.). Retrieved from [https://praw.readthedocs.io/](https://praw.readthedocs.io/)
+### What CryptoSentinel Does NOT Do
+- ❌ Provide financial advice
+- ❌ Make price predictions
+- ❌ Guarantee accuracy of Reddit posts
+- ❌ Access real-time data (uses historical dataset)
 
-3. Bird, S., Klein, E., & Loper, E. (2009). Natural Language Processing with Python. O'Reilly Media.
+## 📚 References
 
-4. Scikit-learn: Machine Learning in Python, Pedregosa et al., JMLR 12, pp. 2825-2830, 2011.
+1. Reddit API Documentation - [reddit.com/dev/api](https://www.reddit.com/dev/api/)
+2. Python Reddit API Wrapper (PRAW) - [praw.readthedocs.io](https://praw.readthedocs.io/)
+3. Model Context Protocol - [modelcontextprotocol.io](https://modelcontextprotocol.io/)
+4. NLTK - Bird, Klein, & Loper (2009). Natural Language Processing with Python
+5. Scikit-learn - Pedregosa et al., JMLR 12, pp. 2825-2830, 2011
 
-5. Wallstreetbets subreddit. (n.d.). Retrieved from [https://www.reddit.com/r/wallstreetbets](https://www.reddit.com/r/wallstreetbets)
+## 📄 License
 
-6. CryptoMoonShots subreddit. (n.d.). Retrieved from [https://www.reddit.com/r/CryptoMoonShots](https://www.reddit.com/r/CryptoMoonShots)
+MIT License - See [LICENSE](LICENSE) for details.
 
-7. Zzeniale. (n.d.). Subreddit-classification. GitHub. Retrieved from [https://github.com/zzeniale/Subreddit-classification](https://github.com/zzeniale/Subreddit-classification)
+---
 
+**Built with ❤️ for grounded, reliable AI analysis of financial discussions.**
